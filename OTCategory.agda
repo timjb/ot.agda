@@ -1,3 +1,5 @@
+-- this agda module depends on https://github.com/copumpkin/categories
+
 module Categories.OTCategory where
 
 -- inspired by https://gist.github.com/aristidb/1746133
