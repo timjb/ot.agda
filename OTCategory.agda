@@ -4,38 +4,6 @@ open import Categories.Category
 open import Data.Nat
 open import Relation.Binary.PropositionalEquality
 
-{-
-data State : Set where
-  Active : State
-  Tombstone : State
-
-invertState : State → State
-invertState Active = Tombstone
-invertState Tombstone = Active
-
-data DocCtx' : State → Set where
-  EmptyCtx : {s : State} → DocCtx' s
-  ConsCtx  : {s : State} → ℕ → DocCtx' (invertState s) → DocCtx' s
-
-docCtx'Length : {s : State} → DocCtx' s → ℕ
-docCtx'Length EmptyCtx = 0
-docCtx'Length (ConsCtx n cs) = 1 + n + docCtx'Length cs
-
-data DocCtx : Set where
-  Ctx : (s : State) → DocCtx' s → DocCtx
-
-add : State → ℕ → DocCtx → DocCtx
-add Active n (Ctx _ EmptyCtx) = Ctx Active (ConsCtx n EmptyCtx)
-add Active n (Ctx Active (ConsCtx m cs)) = Ctx Active (ConsCtx (1 + m + n) cs)
-add Active n (Ctx Tombstone cs) = Ctx Active (ConsCtx n cs)
-add Tombstone n (Ctx _ EmptyCtx) = Ctx Tombstone (ConsCtx n EmptyCtx)
-add Tombstone n (Ctx Tombstone (ConsCtx m cs)) = Ctx Tombstone (ConsCtx (1 + m + n) cs)
-add Tombstone n (Ctx Active cs) = Ctx Tombstone (ConsCtx n cs)
-
-docCtxLength : DocCtx → ℕ
-docCtxLength (Ctx _ ctx) = docCtx'Length ctx
--}
-
 data DocCtx : Set where
   Tombstone : DocCtx → DocCtx
   Char : DocCtx → DocCtx
