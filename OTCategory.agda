@@ -1,5 +1,7 @@
 module Categories.OTCategory where
 
+-- inspired by https://gist.github.com/aristidb/1746133
+
 open import Categories.Category
 open import Data.Nat
 open import Relation.Binary.PropositionalEquality
