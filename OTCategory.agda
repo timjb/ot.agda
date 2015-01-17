@@ -177,11 +177,11 @@ transform (DeleteChar x) (DeleteChar y) =
   in ⋄ (Tombstone s) (RetainTombstone x') (RetainTombstone y') (cong DeleteChar eq)
 transform Noop Noop = ⋄ Empty Noop Noop refl
 
-composeThenTransform : ∀ {a b c d} → (x : Op a b) → (y : Op a c) → (z : Op c d) → Diamond x (compose y z)
-composeThenTransform x y z = transform x (compose y z)
+composeThenTransformᵣ : ∀ {a b c d} → (x : Op a b) → (y : Op a c) → (z : Op c d) → Diamond x (compose y z)
+composeThenTransformᵣ x y z = transform x (compose y z)
 
-transformThenCompose : ∀ {a b c d} → (x : Op a b) → (y : Op a c) → (z : Op c d) → Diamond x (compose y z)
-transformThenCompose x y z =
+transformThenComposeᵣ : ∀ {a b c d} → (x : Op a b) → (y : Op a c) → (z : Op c d) → Diamond x (compose y z)
+transformThenComposeᵣ x y z =
   let ⋄ d₁ x′ y′ eq₁ = transform x y
       ⋄ d₂ x′′ z′ eq₂ = transform x′ z
   in ⋄ d₂ x′′ (compose y′ z′)
@@ -197,6 +197,29 @@ transformThenCompose x y z =
           compose y (compose z x′′)
             ↓⟨ assoc y z x′′ ⟩
           compose (compose y z) x′′
+        ∎)
+  where open Category.HomReasoning OT
+
+composeThenTransforml : ∀ {a b c d} → (x : Op a b) → (y : Op b c) → (z : Op a d) → Diamond (compose x y) z
+composeThenTransforml x y z = transform (compose x y) z
+
+transformThenComposel : ∀ {a b c d} → (x : Op a b) → (y : Op b c) → (z : Op a d) → Diamond (compose x y) z
+transformThenComposel x y z =
+  let ⋄ d₁ x′ z′ eq₁ = transform x z
+      ⋄ d₂ y′ z′′ eq₂ = transform y z′
+  in ⋄ d₂ (compose x′ y′) z′′
+       (begin
+          compose (compose x y) z′′
+            ↑⟨ assoc x y z′′ ⟩
+          compose x (compose y z′′)
+            ↓⟨ cong (compose x) eq₂ ⟩
+          compose x (compose z′ y′)
+            ↓⟨ assoc x z′ y′ ⟩
+          compose (compose x z′) y′
+            ↓⟨ cong (λ w → compose w y′) eq₁ ⟩
+          compose (compose z x′) y′
+            ↑⟨ assoc z x′ y′ ⟩
+          compose z (compose x′ y′)
         ∎)
   where open Category.HomReasoning OT
 
@@ -227,108 +250,175 @@ deleteCharDiamond₂ (⋄ d x′ y′ eq) = ⋄ (Tombstone d) (RetainTombstone x
 deleteCharDiamond₃ : ∀ {a b c} → {x : Op a b} → {y : Op a c} → Diamond x y → Diamond (DeleteChar x) (DeleteChar y)
 deleteCharDiamond₃ (⋄ d x′ y′ eq) = ⋄ (Tombstone d) (RetainTombstone x′) (RetainTombstone y′) (cong DeleteChar eq)
 
+transformComposeCommutativel : ∀ {a b c d} → (x : Op a b) → (y : Op b c) → (z : Op a d)
+                             → composeThenTransforml x y z ≡ transformThenComposel x y z
+transformComposeCommutativel (InsertChar q x) (RetainChar y) z =
+  cong (insertCharDiamond₁ q) (transformComposeCommutativel x y z)
+transformComposeCommutativel (InsertChar q x) (InsertChar p y) z =
+  cong (insertCharDiamond₁ p) (transformComposeCommutativel (InsertChar q x) y z)
+transformComposeCommutativel (InsertChar q x) (DeleteChar y) z =
+  cong insertTombstoneDiamond₁ (transformComposeCommutativel x y z)
+transformComposeCommutativel (InsertTombstone x) (RetainTombstone y) z =
+  cong insertTombstoneDiamond₁ (transformComposeCommutativel x y z)
+transformComposeCommutativel (RetainChar x) (InsertChar q y) z =
+  cong (insertCharDiamond₁ q) (transformComposeCommutativel (RetainChar x) y z)
+transformComposeCommutativel (RetainChar x) (InsertTombstone y) z =
+  cong insertTombstoneDiamond₁ (transformComposeCommutativel (RetainChar x) y z)
+transformComposeCommutativel (RetainTombstone x) (InsertChar q y) z =
+  cong (insertCharDiamond₁ q) (transformComposeCommutativel (RetainTombstone x) y z)
+transformComposeCommutativel (RetainTombstone x) (InsertTombstone y) z =
+  cong insertTombstoneDiamond₁ (transformComposeCommutativel (RetainTombstone x) y z)
+transformComposeCommutativel (InsertTombstone x) (InsertChar q y) z =
+  cong (insertCharDiamond₁ q) (transformComposeCommutativel (InsertTombstone x) y z)
+transformComposeCommutativel (InsertTombstone x) (InsertTombstone y) z =
+  cong insertTombstoneDiamond₁ (transformComposeCommutativel (InsertTombstone x) y z)
+transformComposeCommutativel (InsertChar q x) (InsertTombstone y) z =
+  cong insertTombstoneDiamond₁ (transformComposeCommutativel (InsertChar q x) y z)
+transformComposeCommutativel (DeleteChar x) (InsertTombstone y) z =
+  cong insertTombstoneDiamond₁ (transformComposeCommutativel (DeleteChar x) y z)
+transformComposeCommutativel (DeleteChar x) (InsertChar q y) z =
+  cong (insertCharDiamond₁ q) (transformComposeCommutativel (DeleteChar x) y z)
+transformComposeCommutativel (RetainChar x) (RetainChar y) (RetainChar z) =
+  cong retainCharDiamond (transformComposeCommutativel x y z)
+transformComposeCommutativel (RetainTombstone x) (RetainTombstone y) (RetainTombstone z) =
+  cong retainTombstoneDiamond (transformComposeCommutativel x y z)
+transformComposeCommutativel (RetainChar x) (RetainChar y) (InsertChar q z) =
+  cong (insertCharDiamond₂ q) (transformComposeCommutativel (RetainChar x) (RetainChar y) z)
+transformComposeCommutativel (RetainChar x) (RetainChar y) (InsertTombstone z) =
+  cong insertTombstoneDiamond₂ (transformComposeCommutativel (RetainChar x) (RetainChar y) z)
+transformComposeCommutativel (RetainTombstone x) (RetainTombstone y) (InsertChar q z) =
+  cong (insertCharDiamond₂ q) (transformComposeCommutativel (RetainTombstone x) (RetainTombstone y) z)
+transformComposeCommutativel (RetainTombstone x) (RetainTombstone y) (InsertTombstone z) =
+  cong insertTombstoneDiamond₂ (transformComposeCommutativel (RetainTombstone x) (RetainTombstone y) z)
+transformComposeCommutativel (RetainChar x) (RetainChar y) (DeleteChar z) =
+  cong deleteCharDiamond₂ (transformComposeCommutativel x y z)
+transformComposeCommutativel (RetainChar x) (DeleteChar y) (InsertChar q z) =
+  cong (insertCharDiamond₂ q) (transformComposeCommutativel (RetainChar x) (DeleteChar y) z)
+transformComposeCommutativel (RetainChar x) (DeleteChar y) (InsertTombstone z) =
+  cong insertTombstoneDiamond₂ (transformComposeCommutativel (RetainChar x) (DeleteChar y) z)
+transformComposeCommutativel (RetainChar x) (DeleteChar y) (RetainChar z) =
+  cong deleteCharDiamond₁ (transformComposeCommutativel x y z)
+transformComposeCommutativel (RetainChar x) (DeleteChar y) (DeleteChar z) =
+  cong deleteCharDiamond₃ (transformComposeCommutativel x y z)
+transformComposeCommutativel (DeleteChar x) (RetainTombstone y) (InsertChar q z) =
+  cong (insertCharDiamond₂ q) (transformComposeCommutativel (DeleteChar x) (RetainTombstone y) z)
+transformComposeCommutativel (DeleteChar x) (RetainTombstone y) (InsertTombstone z) =
+  cong insertTombstoneDiamond₂ (transformComposeCommutativel (DeleteChar x) (RetainTombstone y) z)
+transformComposeCommutativel (DeleteChar x) (RetainTombstone y) (RetainChar z) =
+  cong deleteCharDiamond₁ (transformComposeCommutativel x y z)
+transformComposeCommutativel (DeleteChar x) (RetainTombstone y) (DeleteChar z) =
+  cong deleteCharDiamond₃ (transformComposeCommutativel x y z)
+transformComposeCommutativel Noop (InsertChar q y) z =
+  cong (insertCharDiamond₁ q) (transformComposeCommutativel Noop y z)
+transformComposeCommutativel Noop (InsertTombstone y) z =
+  cong insertTombstoneDiamond₁ (transformComposeCommutativel Noop y z)
+transformComposeCommutativel Noop Noop (InsertChar q z) =
+  cong (insertCharDiamond₂ q) (transformComposeCommutativel Noop Noop z)
+transformComposeCommutativel Noop Noop (InsertTombstone z) =
+  cong insertTombstoneDiamond₂ (transformComposeCommutativel Noop Noop z)
+transformComposeCommutativel Noop Noop Noop = refl
 
-transformComposeCommutative : ∀ {a b c d} → (x : Op a b) → (y : Op a c) → (z : Op c d)
-                            → composeThenTransform x y z ≡ transformThenCompose x y z
-transformComposeCommutative (RetainChar x) (RetainChar y) (RetainChar z) =
-  cong retainCharDiamond (transformComposeCommutative x y z)
-transformComposeCommutative (InsertChar q x) y z =
-  cong (insertCharDiamond₁ q) (transformComposeCommutative x y z)
-transformComposeCommutative (RetainTombstone x) (RetainTombstone y) (RetainTombstone z) =
-  cong retainTombstoneDiamond (transformComposeCommutative x y z)
-transformComposeCommutative (InsertTombstone x) y z =
-  cong insertTombstoneDiamond₁ (transformComposeCommutative x y z)
-transformComposeCommutative (DeleteChar x) (RetainChar y) (RetainChar z) =
-  cong deleteCharDiamond₁ (transformComposeCommutative x y z)
-transformComposeCommutative (RetainChar x) (DeleteChar y) (RetainTombstone z) =
-  cong deleteCharDiamond₂ (transformComposeCommutative x y z)
-transformComposeCommutative (RetainChar x) (RetainChar y) (DeleteChar z) =
-  cong deleteCharDiamond₂ (transformComposeCommutative x y z)
-transformComposeCommutative (DeleteChar x) (DeleteChar y) (RetainTombstone z) =
-  cong deleteCharDiamond₃ (transformComposeCommutative x y z)
-transformComposeCommutative (DeleteChar x) (RetainChar y) (DeleteChar z) =
-  cong deleteCharDiamond₃ (transformComposeCommutative x y z)
-transformComposeCommutative (RetainChar x) (InsertChar q y) (RetainChar z) =
-  cong (insertCharDiamond₂ q) (transformComposeCommutative (RetainChar x) y z)
-transformComposeCommutative (DeleteChar x) (InsertChar q y) (RetainChar z) =
-  cong (insertCharDiamond₂ q) (transformComposeCommutative (DeleteChar x) y z)
-transformComposeCommutative (RetainChar x) (RetainChar y) (InsertChar q z) =
-  cong (insertCharDiamond₂ q) (transformComposeCommutative (RetainChar x) (RetainChar y) z)
-transformComposeCommutative (DeleteChar x) (RetainChar y) (InsertChar q z) =
-  cong (insertCharDiamond₂ q) (transformComposeCommutative (DeleteChar x) (RetainChar y) z)
-transformComposeCommutative (RetainChar x) (DeleteChar y) (InsertChar q z) =
-  cong (insertCharDiamond₂ q) (transformComposeCommutative (RetainChar x) (DeleteChar y) z)
-transformComposeCommutative (DeleteChar x) (DeleteChar y) (InsertChar q z) =
-  cong (insertCharDiamond₂ q) (transformComposeCommutative (DeleteChar x) (DeleteChar y) z)
-transformComposeCommutative (RetainChar x) (InsertChar p y) (InsertChar q z) =
-  cong (insertCharDiamond₂ q) (transformComposeCommutative (RetainChar x) (InsertChar p y) z)
-transformComposeCommutative (DeleteChar x) (InsertChar p y) (InsertChar q z) =
-  cong (insertCharDiamond₂ q) (transformComposeCommutative (DeleteChar x) (InsertChar p y) z)
-transformComposeCommutative (RetainChar x) (InsertTombstone y) (InsertChar q z) =
-  cong (insertCharDiamond₂ q) (transformComposeCommutative (RetainChar x) (InsertTombstone y) z)
-transformComposeCommutative (DeleteChar x) (InsertTombstone y) (InsertChar q z) =
-  cong (insertCharDiamond₂ q) (transformComposeCommutative (DeleteChar x) (InsertTombstone y) z)
-transformComposeCommutative (RetainTombstone x) (RetainTombstone y) (InsertChar q z) =
-  cong (insertCharDiamond₂ q) (transformComposeCommutative (RetainTombstone x) (RetainTombstone y) z)
-transformComposeCommutative (RetainChar x) (InsertTombstone y) (RetainTombstone z) =
-  cong insertTombstoneDiamond₂ (transformComposeCommutative (RetainChar x) y z)
-transformComposeCommutative (RetainTombstone x) (InsertTombstone y) (InsertChar q z) =
-  cong (insertCharDiamond₂ q) (transformComposeCommutative (RetainTombstone x) (InsertTombstone y) z)
-transformComposeCommutative (RetainTombstone x) (InsertChar q y) (RetainChar z) =
-  cong (insertCharDiamond₂ q) (transformComposeCommutative (RetainTombstone x) y z)
-transformComposeCommutative (RetainTombstone x) (InsertChar q y) (InsertChar p z) =
-  cong (insertCharDiamond₂ p) (transformComposeCommutative (RetainTombstone x) (InsertChar q y) z)
-transformComposeCommutative (RetainTombstone x) (InsertTombstone y) (RetainTombstone z) =
-  cong insertTombstoneDiamond₂ (transformComposeCommutative (RetainTombstone x) y z)
-transformComposeCommutative (DeleteChar x) (InsertChar q y) (DeleteChar z) =
-  cong insertTombstoneDiamond₂ (transformComposeCommutative (DeleteChar x) y z)
-transformComposeCommutative (RetainChar x) (InsertChar q y) (DeleteChar z) =
-  cong insertTombstoneDiamond₂ (transformComposeCommutative (RetainChar x) y z)
-transformComposeCommutative (DeleteChar x) (InsertTombstone y) (RetainTombstone z) =
-  cong insertTombstoneDiamond₂ (transformComposeCommutative (DeleteChar x) y z)
-transformComposeCommutative (RetainChar x) (RetainChar y) (InsertTombstone z) =
-  cong insertTombstoneDiamond₂ (transformComposeCommutative (RetainChar x) (RetainChar y) z)
-transformComposeCommutative (DeleteChar x) (RetainChar y) (InsertTombstone z) =
-  cong insertTombstoneDiamond₂ (transformComposeCommutative (DeleteChar x) (RetainChar y) z)
-transformComposeCommutative (RetainChar x) (DeleteChar y) (InsertTombstone z) =
-  cong insertTombstoneDiamond₂ (transformComposeCommutative (RetainChar x) (DeleteChar y) z)
-transformComposeCommutative (DeleteChar x) (DeleteChar y) (InsertTombstone z) =
-  cong insertTombstoneDiamond₂ (transformComposeCommutative (DeleteChar x) (DeleteChar y) z)
-transformComposeCommutative (RetainChar x) (InsertChar p y) (InsertTombstone z) =
-  cong insertTombstoneDiamond₂ (transformComposeCommutative (RetainChar x) (InsertChar p y) z)
-transformComposeCommutative (DeleteChar x) (InsertChar p y) (InsertTombstone z) =
-  cong insertTombstoneDiamond₂ (transformComposeCommutative (DeleteChar x) (InsertChar p y) z)
-transformComposeCommutative (RetainTombstone x) (InsertChar p y) (InsertTombstone z) =
-  cong insertTombstoneDiamond₂ (transformComposeCommutative (RetainTombstone x) (InsertChar p y) z)
-transformComposeCommutative (RetainChar x) (InsertTombstone y) (InsertTombstone z) =
-  cong insertTombstoneDiamond₂ (transformComposeCommutative (RetainChar x) (InsertTombstone y) z)
-transformComposeCommutative (DeleteChar x) (InsertTombstone y) (InsertTombstone z) =
-  cong insertTombstoneDiamond₂ (transformComposeCommutative (DeleteChar x) (InsertTombstone y) z)
-transformComposeCommutative (RetainTombstone x) (InsertTombstone y) (InsertTombstone z) =
-  cong insertTombstoneDiamond₂ (transformComposeCommutative (RetainTombstone x) (InsertTombstone y) z)
-transformComposeCommutative (RetainTombstone x) (RetainTombstone y) (InsertTombstone z) =
-  cong insertTombstoneDiamond₂ (transformComposeCommutative (RetainTombstone x) (RetainTombstone y) z)
-transformComposeCommutative (RetainTombstone x) (InsertChar q y) (DeleteChar z) =
-  cong insertTombstoneDiamond₂ (transformComposeCommutative (RetainTombstone x) y z)
-transformComposeCommutative Noop Noop (InsertChar q z) =
-  cong (insertCharDiamond₂ q) (transformComposeCommutative Noop Noop z)
-transformComposeCommutative Noop (InsertChar q y) (RetainChar z) =
-  cong (insertCharDiamond₂ q) (transformComposeCommutative Noop y z)
-transformComposeCommutative Noop (InsertChar q y) (InsertChar p z) =
-  cong (insertCharDiamond₂ p) (transformComposeCommutative Noop (InsertChar q y) z)
-transformComposeCommutative Noop Noop (InsertTombstone z) =
-  cong insertTombstoneDiamond₂ (transformComposeCommutative Noop Noop z)
-transformComposeCommutative Noop (InsertTombstone y) (RetainTombstone z) =
-  cong insertTombstoneDiamond₂ (transformComposeCommutative Noop y z)
-transformComposeCommutative Noop (InsertChar q y) (DeleteChar z) =
-  cong insertTombstoneDiamond₂ (transformComposeCommutative Noop y z)
-transformComposeCommutative Noop (InsertChar q y) (InsertTombstone z) =
-  cong insertTombstoneDiamond₂ (transformComposeCommutative Noop (InsertChar q y) z)
-transformComposeCommutative Noop (InsertTombstone y) (InsertTombstone z) =
-  cong insertTombstoneDiamond₂ (transformComposeCommutative Noop (InsertTombstone y) z)
-transformComposeCommutative Noop (InsertTombstone y) (InsertChar q z) =
-  cong (insertCharDiamond₂ q) (transformComposeCommutative Noop (InsertTombstone y) z)
-transformComposeCommutative Noop Noop Noop = refl
+transformComposeCommutativeᵣ : ∀ {a b c d} → (x : Op a b) → (y : Op a c) → (z : Op c d)
+                             → composeThenTransformᵣ x y z ≡ transformThenComposeᵣ x y z
+transformComposeCommutativeᵣ (RetainChar x) (RetainChar y) (RetainChar z) =
+  cong retainCharDiamond (transformComposeCommutativeᵣ x y z)
+transformComposeCommutativeᵣ (InsertChar q x) y z =
+  cong (insertCharDiamond₁ q) (transformComposeCommutativeᵣ x y z)
+transformComposeCommutativeᵣ (RetainTombstone x) (RetainTombstone y) (RetainTombstone z) =
+  cong retainTombstoneDiamond (transformComposeCommutativeᵣ x y z)
+transformComposeCommutativeᵣ (InsertTombstone x) y z =
+  cong insertTombstoneDiamond₁ (transformComposeCommutativeᵣ x y z)
+transformComposeCommutativeᵣ (DeleteChar x) (RetainChar y) (RetainChar z) =
+  cong deleteCharDiamond₁ (transformComposeCommutativeᵣ x y z)
+transformComposeCommutativeᵣ (RetainChar x) (DeleteChar y) (RetainTombstone z) =
+  cong deleteCharDiamond₂ (transformComposeCommutativeᵣ x y z)
+transformComposeCommutativeᵣ (RetainChar x) (RetainChar y) (DeleteChar z) =
+  cong deleteCharDiamond₂ (transformComposeCommutativeᵣ x y z)
+transformComposeCommutativeᵣ (DeleteChar x) (DeleteChar y) (RetainTombstone z) =
+  cong deleteCharDiamond₃ (transformComposeCommutativeᵣ x y z)
+transformComposeCommutativeᵣ (DeleteChar x) (RetainChar y) (DeleteChar z) =
+  cong deleteCharDiamond₃ (transformComposeCommutativeᵣ x y z)
+transformComposeCommutativeᵣ (RetainChar x) (InsertChar q y) (RetainChar z) =
+  cong (insertCharDiamond₂ q) (transformComposeCommutativeᵣ (RetainChar x) y z)
+transformComposeCommutativeᵣ (DeleteChar x) (InsertChar q y) (RetainChar z) =
+  cong (insertCharDiamond₂ q) (transformComposeCommutativeᵣ (DeleteChar x) y z)
+transformComposeCommutativeᵣ (RetainChar x) (RetainChar y) (InsertChar q z) =
+  cong (insertCharDiamond₂ q) (transformComposeCommutativeᵣ (RetainChar x) (RetainChar y) z)
+transformComposeCommutativeᵣ (DeleteChar x) (RetainChar y) (InsertChar q z) =
+  cong (insertCharDiamond₂ q) (transformComposeCommutativeᵣ (DeleteChar x) (RetainChar y) z)
+transformComposeCommutativeᵣ (RetainChar x) (DeleteChar y) (InsertChar q z) =
+  cong (insertCharDiamond₂ q) (transformComposeCommutativeᵣ (RetainChar x) (DeleteChar y) z)
+transformComposeCommutativeᵣ (DeleteChar x) (DeleteChar y) (InsertChar q z) =
+  cong (insertCharDiamond₂ q) (transformComposeCommutativeᵣ (DeleteChar x) (DeleteChar y) z)
+transformComposeCommutativeᵣ (RetainChar x) (InsertChar p y) (InsertChar q z) =
+  cong (insertCharDiamond₂ q) (transformComposeCommutativeᵣ (RetainChar x) (InsertChar p y) z)
+transformComposeCommutativeᵣ (DeleteChar x) (InsertChar p y) (InsertChar q z) =
+  cong (insertCharDiamond₂ q) (transformComposeCommutativeᵣ (DeleteChar x) (InsertChar p y) z)
+transformComposeCommutativeᵣ (RetainChar x) (InsertTombstone y) (InsertChar q z) =
+  cong (insertCharDiamond₂ q) (transformComposeCommutativeᵣ (RetainChar x) (InsertTombstone y) z)
+transformComposeCommutativeᵣ (DeleteChar x) (InsertTombstone y) (InsertChar q z) =
+  cong (insertCharDiamond₂ q) (transformComposeCommutativeᵣ (DeleteChar x) (InsertTombstone y) z)
+transformComposeCommutativeᵣ (RetainTombstone x) (RetainTombstone y) (InsertChar q z) =
+  cong (insertCharDiamond₂ q) (transformComposeCommutativeᵣ (RetainTombstone x) (RetainTombstone y) z)
+transformComposeCommutativeᵣ (RetainChar x) (InsertTombstone y) (RetainTombstone z) =
+  cong insertTombstoneDiamond₂ (transformComposeCommutativeᵣ (RetainChar x) y z)
+transformComposeCommutativeᵣ (RetainTombstone x) (InsertTombstone y) (InsertChar q z) =
+  cong (insertCharDiamond₂ q) (transformComposeCommutativeᵣ (RetainTombstone x) (InsertTombstone y) z)
+transformComposeCommutativeᵣ (RetainTombstone x) (InsertChar q y) (RetainChar z) =
+  cong (insertCharDiamond₂ q) (transformComposeCommutativeᵣ (RetainTombstone x) y z)
+transformComposeCommutativeᵣ (RetainTombstone x) (InsertChar q y) (InsertChar p z) =
+  cong (insertCharDiamond₂ p) (transformComposeCommutativeᵣ (RetainTombstone x) (InsertChar q y) z)
+transformComposeCommutativeᵣ (RetainTombstone x) (InsertTombstone y) (RetainTombstone z) =
+  cong insertTombstoneDiamond₂ (transformComposeCommutativeᵣ (RetainTombstone x) y z)
+transformComposeCommutativeᵣ (DeleteChar x) (InsertChar q y) (DeleteChar z) =
+  cong insertTombstoneDiamond₂ (transformComposeCommutativeᵣ (DeleteChar x) y z)
+transformComposeCommutativeᵣ (RetainChar x) (InsertChar q y) (DeleteChar z) =
+  cong insertTombstoneDiamond₂ (transformComposeCommutativeᵣ (RetainChar x) y z)
+transformComposeCommutativeᵣ (DeleteChar x) (InsertTombstone y) (RetainTombstone z) =
+  cong insertTombstoneDiamond₂ (transformComposeCommutativeᵣ (DeleteChar x) y z)
+transformComposeCommutativeᵣ (RetainChar x) (RetainChar y) (InsertTombstone z) =
+  cong insertTombstoneDiamond₂ (transformComposeCommutativeᵣ (RetainChar x) (RetainChar y) z)
+transformComposeCommutativeᵣ (DeleteChar x) (RetainChar y) (InsertTombstone z) =
+  cong insertTombstoneDiamond₂ (transformComposeCommutativeᵣ (DeleteChar x) (RetainChar y) z)
+transformComposeCommutativeᵣ (RetainChar x) (DeleteChar y) (InsertTombstone z) =
+  cong insertTombstoneDiamond₂ (transformComposeCommutativeᵣ (RetainChar x) (DeleteChar y) z)
+transformComposeCommutativeᵣ (DeleteChar x) (DeleteChar y) (InsertTombstone z) =
+  cong insertTombstoneDiamond₂ (transformComposeCommutativeᵣ (DeleteChar x) (DeleteChar y) z)
+transformComposeCommutativeᵣ (RetainChar x) (InsertChar p y) (InsertTombstone z) =
+  cong insertTombstoneDiamond₂ (transformComposeCommutativeᵣ (RetainChar x) (InsertChar p y) z)
+transformComposeCommutativeᵣ (DeleteChar x) (InsertChar p y) (InsertTombstone z) =
+  cong insertTombstoneDiamond₂ (transformComposeCommutativeᵣ (DeleteChar x) (InsertChar p y) z)
+transformComposeCommutativeᵣ (RetainTombstone x) (InsertChar p y) (InsertTombstone z) =
+  cong insertTombstoneDiamond₂ (transformComposeCommutativeᵣ (RetainTombstone x) (InsertChar p y) z)
+transformComposeCommutativeᵣ (RetainChar x) (InsertTombstone y) (InsertTombstone z) =
+  cong insertTombstoneDiamond₂ (transformComposeCommutativeᵣ (RetainChar x) (InsertTombstone y) z)
+transformComposeCommutativeᵣ (DeleteChar x) (InsertTombstone y) (InsertTombstone z) =
+  cong insertTombstoneDiamond₂ (transformComposeCommutativeᵣ (DeleteChar x) (InsertTombstone y) z)
+transformComposeCommutativeᵣ (RetainTombstone x) (InsertTombstone y) (InsertTombstone z) =
+  cong insertTombstoneDiamond₂ (transformComposeCommutativeᵣ (RetainTombstone x) (InsertTombstone y) z)
+transformComposeCommutativeᵣ (RetainTombstone x) (RetainTombstone y) (InsertTombstone z) =
+  cong insertTombstoneDiamond₂ (transformComposeCommutativeᵣ (RetainTombstone x) (RetainTombstone y) z)
+transformComposeCommutativeᵣ (RetainTombstone x) (InsertChar q y) (DeleteChar z) =
+  cong insertTombstoneDiamond₂ (transformComposeCommutativeᵣ (RetainTombstone x) y z)
+transformComposeCommutativeᵣ Noop Noop (InsertChar q z) =
+  cong (insertCharDiamond₂ q) (transformComposeCommutativeᵣ Noop Noop z)
+transformComposeCommutativeᵣ Noop (InsertChar q y) (RetainChar z) =
+  cong (insertCharDiamond₂ q) (transformComposeCommutativeᵣ Noop y z)
+transformComposeCommutativeᵣ Noop (InsertChar q y) (InsertChar p z) =
+  cong (insertCharDiamond₂ p) (transformComposeCommutativeᵣ Noop (InsertChar q y) z)
+transformComposeCommutativeᵣ Noop Noop (InsertTombstone z) =
+  cong insertTombstoneDiamond₂ (transformComposeCommutativeᵣ Noop Noop z)
+transformComposeCommutativeᵣ Noop (InsertTombstone y) (RetainTombstone z) =
+  cong insertTombstoneDiamond₂ (transformComposeCommutativeᵣ Noop y z)
+transformComposeCommutativeᵣ Noop (InsertChar q y) (DeleteChar z) =
+  cong insertTombstoneDiamond₂ (transformComposeCommutativeᵣ Noop y z)
+transformComposeCommutativeᵣ Noop (InsertChar q y) (InsertTombstone z) =
+  cong insertTombstoneDiamond₂ (transformComposeCommutativeᵣ Noop (InsertChar q y) z)
+transformComposeCommutativeᵣ Noop (InsertTombstone y) (InsertTombstone z) =
+  cong insertTombstoneDiamond₂ (transformComposeCommutativeᵣ Noop (InsertTombstone y) z)
+transformComposeCommutativeᵣ Noop (InsertTombstone y) (InsertChar q z) =
+  cong (insertCharDiamond₂ q) (transformComposeCommutativeᵣ Noop (InsertTombstone y) z)
+transformComposeCommutativeᵣ Noop Noop Noop = refl
 
 open import Categories.Slice (Category.op OT) as Coslice
 
