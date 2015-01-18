@@ -433,19 +433,91 @@ Transform₀ (sliceobj x , sliceobj y) = diagonal (transform x y)
 Hom : ∀ {o ℓ e} → (C : Category o ℓ e) → Category.Obj C → Category.Obj C → Set ℓ
 Hom = _[_,_]
 
+record DiamondGrid {a b₁ b₂ c₁ c₂} (x₁ : Op a b₁) (x₂ : Op b₁ b₂) (y₁ : Op a c₁) (y₂ : Op c₁ c₂) : Set where
+  constructor ◆
+  field
+    D-top : Diamond x₁ y₁
+    D-left : Diamond x₂ (Diamond.y′ D-top)
+    D-right : Diamond (Diamond.x′ D-top) y₂
+    D-bottom : Diamond (Diamond.x′ D-left) (Diamond.y′ D-right)
+
+in-out : ∀ {a b c d e} → (w : Op a b) → (x : Op b c) → (y : Op c d) → (z : Op d e)
+       → compose (compose w x) (compose y z) ≡ compose w (compose (compose x y) z)
+in-out w x y z = trans (sym (assoc w x (compose y z)))
+                       (cong (compose w) (assoc x y z))
+
+outerDiamond : ∀ {a b₁ b₂ c₁ c₂} {x₁ : Op a b₁} {x₂ : Op b₁ b₂} {y₁ : Op a c₁} {y₂ : Op c₁ c₂}
+             → DiamondGrid x₁ x₂ y₁ y₂
+             → Diamond (compose x₁ x₂) (compose y₁ y₂)
+outerDiamond {a} {b₁} {b₂} {c₁} {c₂} {x₁} {x₂} {y₁} {y₂} (◆ Dt Dl Dr Db) =
+  let ⋄ dt x₁′ y₁′ commt = Dt
+      ⋄ dl x₂′ y₁′′ comml = Dl 
+      ⋄ dr x₁′′ y₂′ commr = Dr
+      ⋄ db x₂′′ y₂′′ commb = Db
+  in ⋄ db (compose x₁′′ x₂′′) (compose y₁′′ y₂′′)
+       (begin
+          compose (compose x₁ x₂) (compose y₁′′ y₂′′)
+            ↓⟨ in-out x₁ x₂ y₁′′ y₂′′ ⟩
+          compose x₁ (compose (compose x₂ y₁′′) y₂′′)
+            ↓⟨ cong (λ w → compose x₁ (compose w y₂′′)) comml ⟩
+          compose x₁ (compose (compose y₁′ x₂′) y₂′′)
+            ↑⟨ in-out x₁ y₁′ x₂′ y₂′′ ⟩
+          compose (compose x₁ y₁′) (compose x₂′ y₂′′)
+            ↓⟨ cong₂ compose commt commb ⟩
+          compose (compose y₁ x₁′) (compose y₂′ x₂′′)
+            ↓⟨ in-out y₁ x₁′ y₂′ x₂′′ ⟩
+          compose y₁ (compose (compose x₁′ y₂′) x₂′′)
+            ↓⟨ cong (λ w → compose y₁ (compose w x₂′′)) commr ⟩
+          compose y₁ (compose (compose y₂ x₁′′) x₂′′)
+            ↑⟨ in-out y₁ y₂ x₁′′ x₂′′ ⟩
+          compose (compose y₁ y₂) (compose x₁′′ x₂′′)
+        ∎)
+  where open Category.HomReasoning OT
+
+transformGrid : ∀ {a b₁ b₂ c₁ c₂} → (x₁ : Op a b₁) (x₂ : Op b₁ b₂) (y₁ : Op a c₁) (y₂ : Op c₁ c₂)
+              → DiamondGrid x₁ x₂ y₁ y₂
+transformGrid x₁ x₂ y₁ y₂ =
+  let Dt = transform x₁ y₁
+      Dl = transform x₂ (Diamond.y′ Dt)
+      Dr = transform (Diamond.x′ Dt) y₂
+      Db = transform (Diamond.x′ Dl) (Diamond.y′ Dr)
+  in ◆ Dt Dl Dr Db
+
+composeTransformCommutes : ∀ {a b₁ b₂ c₁ c₂} → (x₁ : Op a b₁) (x₂ : Op b₁ b₂) (y₁ : Op a c₁) (y₂ : Op c₁ c₂)
+                         → outerDiamond (transformGrid x₁ x₂ y₁ y₂) ≡ transform (compose x₁ x₂) (compose y₁ y₂)
+composeTransformCommutes {c₂ = c₂} x₁ x₂ y₁ y₂ = {!!}
+--with transformThenComposel x₁ x₂ y₁ | inspect (transformThenComposel x₁ x₂) y₁ --Diamond.d (composeThenTransforml x₁ x₂ y₁) | cong Diamond.d (transformComposeCommutativel x₁ x₂ y₁)
+--... | ⋄ d i j k | [ eq ] = {!!}
+  where
+    Dt = transform x₁ y₁
+    Dl = transform x₂ (Diamond.y′ Dt)
+    Dr = transform (Diamond.x′ Dt) y₂
+    Db = transform (Diamond.x′ Dl) (Diamond.y′ Dr)
+    x₁′′ = Diamond.x′ Dr
+    s : Set
+    s = subst (Op c₂) (cong Diamond.d (sym (transformComposeCommutativeᵣ x₁ y₁ y₂))) x₁′′ ≡
+        Diamond.x′ (transform x₁ (compose y₁ y₂))
+    eqs : s
+    eqs = subst (Op c₂) (cong Diamond.d (sym (transformComposeCommutativeᵣ x₁ y₁ y₂))) (cong Diamond.x′ (transformComposeCommutativeᵣ x₁ y₁ y₂))
+    --eq₁ : x₁′′ ≡ Diamond.x′ (transform x₁ (compose y₁ y₂))
+    --eq₁ = ?
+
+{-
 Transform₁ : ∀ {a} (x y : Category.Obj (Product (slice a) (slice a)))
            → Hom (Product (slice a) (slice a)) x y
            → Hom (slice a) (Transform₀ x) (Transform₀ y)
-Transform₁ {a} x y arr =
+Transform₁ {a} (sliceobj {b₂} x₁x₂ , sliceobj {c₂} y₁y₂)
+               (sliceobj {b₁} x₁ , sliceobj {c₁} y₁)
+               (slicearr {x₂} e₁ , slicearr {y₂} e₂)
+                 with transformComposeCommutativeᵣ x₁ y₁ y₂
+... | refl =
   let
-    (sliceobj {b₂} x₁x₂ , sliceobj {c₂} y₁y₂) = x
-    (sliceobj {b₁} x₁ , sliceobj {c₁} y₁) = y
-    (slicearr {x₂} e₁ , slicearr {y₂} e₂) = arr
+    x = (sliceobj {b₂} x₁x₂ , sliceobj {c₂} y₁y₂)
+    y = (sliceobj {b₁} x₁ , sliceobj {c₁} y₁)
     ⋄ d₁ x₁′ y₁′ _ = transform x₁ y₁
     ⋄ d₂ x₂′ _   _ = transform x₂ y₁′
     ⋄ d₃ _   y₂′ _ = transform x₁′ y₂
     ⋄ d₄ x₂′′ y₂′′ _ = transform x₂′ y₂′
-    refl = transformComposeCommutativeᵣ x₁ y₁ y₂
     z : d₃ ≡ Diamond.d (transform x₁ (compose y₁ y₂))
     z = cong Diamond.d (sym (transformComposeCommutativeᵣ x₁ y₁ y₂))
     t₂ = transformThenComposeᵣ x₂ y₁′ y₂′
@@ -466,9 +538,7 @@ Transform₁ {a} x y arr =
     eq = {!!}
   in slicearr eq
   where open ≡-Reasoning
-  --in (record { {h} = ?
-             --; .triangle = ?
-             --}) --{a} {{!!}} {{!!}} {!!} --slicearr {} {!!} --{!slicearr {subst₂ Op ? ? (compose x₂′ y₂′′)} ?!}
+-}
 
 {-
 Transform : ∀ {a} → Functor (Product (slice a) (slice a)) (slice a)
