@@ -143,38 +143,38 @@ record Diamond {a b c} (x : Op a b) (y : Op a c) : Set where
   constructor ⋄
   field
     d : DocCtx
-    x' : Op c d
-    y' : Op b d
-    .comm : compose x y' ≡ compose y x'
+    x′ : Op c d
+    y′ : Op b d
+    .comm : compose x y′ ≡ compose y x′
 
 transform : ∀ {a b c} → (x : Op a b) → (y : Op a c) → Diamond x y
 transform (InsertChar c x) y =
-  let ⋄ s x' y' eq = transform x y
-  in ⋄ (Char s) (InsertChar c x') (RetainChar y') (cong (InsertChar c) eq)
+  let ⋄ s x′ y′ eq = transform x y
+  in ⋄ (Char s) (InsertChar c x′) (RetainChar y′) (cong (InsertChar c) eq)
 transform (InsertTombstone x) y =
-  let ⋄ s x' y' eq = transform x y
-  in ⋄ (Tombstone s) (InsertTombstone x') (RetainTombstone y') (cong InsertTombstone eq)
+  let ⋄ s x′ y′ eq = transform x y
+  in ⋄ (Tombstone s) (InsertTombstone x′) (RetainTombstone y′) (cong InsertTombstone eq)
 transform x (InsertTombstone y) =
-  let ⋄ s x' y' eq = transform x y
-  in ⋄ (Tombstone s) (RetainTombstone x') (InsertTombstone y') (cong InsertTombstone eq)
+  let ⋄ s x′ y′ eq = transform x y
+  in ⋄ (Tombstone s) (RetainTombstone x′) (InsertTombstone y′) (cong InsertTombstone eq)
 transform x (InsertChar c y) =
-  let ⋄ s x' y' eq = transform x y
-  in ⋄ (Char s) (RetainChar x') (InsertChar c y') (cong (InsertChar c) eq)
+  let ⋄ s x′ y′ eq = transform x y
+  in ⋄ (Char s) (RetainChar x′) (InsertChar c y′) (cong (InsertChar c) eq)
 transform (RetainChar x) (RetainChar y) =
-  let ⋄ s x' y' eq = transform x y
-  in ⋄ (Char s) (RetainChar x') (RetainChar y') (cong RetainChar eq)
+  let ⋄ s x′ y′ eq = transform x y
+  in ⋄ (Char s) (RetainChar x′) (RetainChar y′) (cong RetainChar eq)
 transform (RetainTombstone x) (RetainTombstone y) =
-  let ⋄ s x' y' eq = transform x y
-  in ⋄ (Tombstone s) (RetainTombstone x') (RetainTombstone y') (cong RetainTombstone eq)
+  let ⋄ s x′ y′ eq = transform x y
+  in ⋄ (Tombstone s) (RetainTombstone x′) (RetainTombstone y′) (cong RetainTombstone eq)
 transform (RetainChar x) (DeleteChar y) =
-  let ⋄ s x' y' eq = transform x y
-  in ⋄ (Tombstone s) (RetainTombstone x') (DeleteChar y') (cong DeleteChar eq)
+  let ⋄ s x′ y′ eq = transform x y
+  in ⋄ (Tombstone s) (RetainTombstone x′) (DeleteChar y′) (cong DeleteChar eq)
 transform (DeleteChar x) (RetainChar y) =
-  let ⋄ s x' y' eq = transform x y
-  in ⋄ (Tombstone s) (DeleteChar x') (RetainTombstone y') (cong DeleteChar eq)
+  let ⋄ s x′ y′ eq = transform x y
+  in ⋄ (Tombstone s) (DeleteChar x′) (RetainTombstone y′) (cong DeleteChar eq)
 transform (DeleteChar x) (DeleteChar y) =
-  let ⋄ s x' y' eq = transform x y
-  in ⋄ (Tombstone s) (RetainTombstone x') (RetainTombstone y') (cong DeleteChar eq)
+  let ⋄ s x′ y′ eq = transform x y
+  in ⋄ (Tombstone s) (RetainTombstone x′) (RetainTombstone y′) (cong DeleteChar eq)
 transform Noop Noop = ⋄ Empty Noop Noop refl
 
 composeThenTransformᵣ : ∀ {a b c d} → (x : Op a b) → (y : Op a c) → (z : Op c d) → Diamond x (compose y z)
@@ -433,17 +433,44 @@ Transform₀ (sliceobj x , sliceobj y) = diagonal (transform x y)
 Hom : ∀ {o ℓ e} → (C : Category o ℓ e) → Category.Obj C → Category.Obj C → Set ℓ
 Hom = _[_,_]
 
-{-
 Transform₁ : ∀ {a} (x y : Category.Obj (Product (slice a) (slice a)))
            → Hom (Product (slice a) (slice a)) x y
            → Hom (slice a) (Transform₀ x) (Transform₀ y)
-Transform₁ {a} (sliceobj {b₂} _ , sliceobj {c₂} _) (sliceobj {b₁} x₁ , sliceobj {c₁} y₁) (slicearr {x₂} _ , slicearr {y₂} _) =
-  let ⋄ _ x₁′ y₁′ _ = transform x₁ y₁
-      ⋄ _ x₂′ _   _ = transform x₂ y₁′
-      ⋄ _ _   y₂′ _ = transform x₁′ y₂
-      ⋄ _ x₂′′ y₂′′ _ = transform x₂′ y₂′
-  in {!slicearr (compose ) ?!}
+Transform₁ {a} x y arr =
+  let
+    (sliceobj {b₂} x₁x₂ , sliceobj {c₂} y₁y₂) = x
+    (sliceobj {b₁} x₁ , sliceobj {c₁} y₁) = y
+    (slicearr {x₂} e₁ , slicearr {y₂} e₂) = arr
+    ⋄ d₁ x₁′ y₁′ _ = transform x₁ y₁
+    ⋄ d₂ x₂′ _   _ = transform x₂ y₁′
+    ⋄ d₃ _   y₂′ _ = transform x₁′ y₂
+    ⋄ d₄ x₂′′ y₂′′ _ = transform x₂′ y₂′
+    refl = transformComposeCommutativeᵣ x₁ y₁ y₂
+    z : d₃ ≡ Diamond.d (transform x₁ (compose y₁ y₂))
+    z = cong Diamond.d (sym (transformComposeCommutativeᵣ x₁ y₁ y₂))
+    t₂ = transformThenComposeᵣ x₂ y₁′ y₂′
+    t₃ = transformComposeCommutativel x₁ x₂ (compose y₁ y₂)
+    h₁ : Diamond.d (transform (compose x₁ x₂) (compose y₁ y₂)) ≡ d₄
+    h₁ = begin
+          Diamond.d (composeThenTransforml x₁ x₂ (compose y₁ y₂))
+            ≡⟨ cong Diamond.d (transformComposeCommutativel x₁ x₂ (compose y₁ y₂)) ⟩
+          Diamond.d (transformThenComposel x₁ x₂ (compose y₁ y₂))
+            ≡⟨ {!!} ⟩
+          d₄
+        ∎
+    h₂ : SliceObj.Y (Transform₀ x) ≡ d₄
+    h₂ = {!!}
+    f : Op (SliceObj.Y (Transform₀ y)) (SliceObj.Y (Transform₀ x))
+    f = subst₂ Op {!!} (sym h₂) (compose x₂′ y₂′′)
+    eq : compose (SliceObj.arr (Transform₀ y)) f ≡ SliceObj.arr (Transform₀ x)
+    eq = {!!}
+  in slicearr eq
+  where open ≡-Reasoning
+  --in (record { {h} = ?
+             --; .triangle = ?
+             --}) --{a} {{!!}} {{!!}} {!!} --slicearr {} {!!} --{!slicearr {subst₂ Op ? ? (compose x₂′ y₂′′)} ?!}
 
+{-
 Transform : ∀ {a} → Functor (Product (slice a) (slice a)) (slice a)
 Transform = record
   { F₀ = Transform₀
