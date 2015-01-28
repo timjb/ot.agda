@@ -13,35 +13,6 @@ record Diamond {a b c} (x : Op a b) (y : Op a c) : Set where
     y′ : Op b d
     .comm : compose x y′ ≡ compose y x′
 
-transform : ∀ {a b c} → (x : Op a b) → (y : Op a c) → Diamond x y
-transform (InsertChar c x) y =
-  let ⋄ s x′ y′ eq = transform x y
-  in ⋄ (Char s) (InsertChar c x′) (RetainChar y′) (cong (InsertChar c) eq)
-transform (InsertTombstone x) y =
-  let ⋄ s x′ y′ eq = transform x y
-  in ⋄ (Tombstone s) (InsertTombstone x′) (RetainTombstone y′) (cong InsertTombstone eq)
-transform x (InsertTombstone y) =
-  let ⋄ s x′ y′ eq = transform x y
-  in ⋄ (Tombstone s) (RetainTombstone x′) (InsertTombstone y′) (cong InsertTombstone eq)
-transform x (InsertChar c y) =
-  let ⋄ s x′ y′ eq = transform x y
-  in ⋄ (Char s) (RetainChar x′) (InsertChar c y′) (cong (InsertChar c) eq)
-transform (RetainChar x) (RetainChar y) =
-  let ⋄ s x′ y′ eq = transform x y
-  in ⋄ (Char s) (RetainChar x′) (RetainChar y′) (cong RetainChar eq)
-transform (RetainTombstone x) (RetainTombstone y) =
-  let ⋄ s x′ y′ eq = transform x y
-  in ⋄ (Tombstone s) (RetainTombstone x′) (RetainTombstone y′) (cong RetainTombstone eq)
-transform (RetainChar x) (DeleteChar y) =
-  let ⋄ s x′ y′ eq = transform x y
-  in ⋄ (Tombstone s) (RetainTombstone x′) (DeleteChar y′) (cong DeleteChar eq)
-transform (DeleteChar x) (RetainChar y) =
-  let ⋄ s x′ y′ eq = transform x y
-  in ⋄ (Tombstone s) (DeleteChar x′) (RetainTombstone y′) (cong DeleteChar eq)
-transform (DeleteChar x) (DeleteChar y) =
-  let ⋄ s x′ y′ eq = transform x y
-  in ⋄ (Tombstone s) (RetainTombstone x′) (RetainTombstone y′) (cong DeleteChar eq)
-transform Noop Noop = ⋄ Empty Noop Noop refl
 
 retainCharDiamond : ∀ {a b c} → {x : Op a b} → {y : Op a c} → Diamond x y → Diamond (RetainChar x) (RetainChar y)
 retainCharDiamond (⋄ d x′ y′ eq) = ⋄ (Char d) (RetainChar x′) (RetainChar y′) (cong RetainChar eq)
@@ -69,6 +40,19 @@ deleteCharDiamond₂ (⋄ d x′ y′ eq) = ⋄ (Tombstone d) (RetainTombstone x
 
 deleteCharDiamond₃ : ∀ {a b c} → {x : Op a b} → {y : Op a c} → Diamond x y → Diamond (DeleteChar x) (DeleteChar y)
 deleteCharDiamond₃ (⋄ d x′ y′ eq) = ⋄ (Tombstone d) (RetainTombstone x′) (RetainTombstone y′) (cong DeleteChar eq)
+
+
+transform : ∀ {a b c} → (x : Op a b) → (y : Op a c) → Diamond x y
+transform (InsertChar c x) y = insertCharDiamond₁ c (transform x y)
+transform (InsertTombstone x) y = insertTombstoneDiamond₁ (transform x y)
+transform x (InsertTombstone y) = insertTombstoneDiamond₂ (transform x y)
+transform x (InsertChar c y) = insertCharDiamond₂ c (transform x y)
+transform (RetainChar x) (RetainChar y) = retainCharDiamond (transform x y)
+transform (RetainTombstone x) (RetainTombstone y) = retainTombstoneDiamond (transform x y)
+transform (RetainChar x) (DeleteChar y) = deleteCharDiamond₂ (transform x y)
+transform (DeleteChar x) (RetainChar y) = deleteCharDiamond₁ (transform x y)
+transform (DeleteChar x) (DeleteChar y) = deleteCharDiamond₃ (transform x y)
+transform Noop Noop = ⋄ Empty Noop Noop refl
 
 record DiamondGrid {a b₁ b₂ c₁ c₂} (x₁ : Op a b₁) (x₂ : Op b₁ b₂) (y₁ : Op a c₁) (y₂ : Op c₁ c₂) : Set where
   constructor ◆
