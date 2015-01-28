@@ -5,6 +5,8 @@ open import Relation.Binary.PropositionalEquality
 module OTTransformFunctor (C : Set) (decEq : Decidable {A = C} _≡_) where
 
 open import Relation.Nullary
+import Relation.Binary.HeterogeneousEquality as HE
+open import Relation.Binary.HeterogeneousEquality using (_≅_)
 open import Categories.Category
 open import Categories.Functor.Core
 open import Categories.Product
@@ -101,7 +103,26 @@ diagCommutes {a} {b₁} {b₂} {c₁} {c₂} {x₁} {x₂} {y₁} {y₂} (◆ Dt
      ∎
   where open Category.HomReasoning OT
 
+longDiag₁ : ∀ {a b₁ b₂ c₁ c₂} (x₁ : Op a b₁) (x₂ : Op b₁ b₂) (y₁ : Op a c₁) (y₂ : Op c₁ c₂)
+          → Op a (Diamond.d (transform (compose x₁ x₂) (compose y₁ y₂)))
+longDiag₁ x₁ x₂ y₁ y₂ = diag (transform (compose x₁ x₂) (compose y₁ y₂))
 
+longDiag₂ : ∀ {a b₁ b₂ c₁ c₂} (x₁ : Op a b₁) (x₂ : Op b₁ b₂) (y₁ : Op a c₁) (y₂ : Op c₁ c₂)
+          → Op a (Diamond.d (transform (compose x₁ x₂) (compose y₁ y₂)))
+longDiag₂ {a} x₁ x₂ y₁ y₂ =
+  subst (Op a) (cong Diamond.d (composeTransformCommutes x₁ x₂ y₁ y₂))
+               (diag (outerDiamond (transformGrid x₁ x₂ y₁ y₂)))
+
+longDiagEq : ∀ {a b₁ b₂ c₁ c₂} (x₁ : Op a b₁) (x₂ : Op b₁ b₂) (y₁ : Op a c₁) (y₂ : Op c₁ c₂)
+           → (dg : DiamondGrid x₁ x₂ y₁ y₂) → (d : Diamond (compose x₁ x₂) (compose y₁ y₂))
+           → (e : outerDiamond dg ≡ d) → diag (outerDiamond dg) ≅ diag d
+longDiagEq x₁ x₂ y₁ y₂ dg d eq = HE.cong diag (HE.≡-to-≅ eq)
+
+{-
+longDiagEq : ∀ {a b₁ b₂ c₁ c₂} (x₁ : Op a b₁) (x₂ : Op b₁ b₂) (y₁ : Op a c₁) (y₂ : Op c₁ c₂)
+           → longDiag₁ x₁ x₂ y₁ y₂ ≡ longDiag₂ x₁ x₂ y₁ y₂
+longDiagEq x₁ x₂ y₁ y₂ = cong (compose (compose x₁ x₂)) {!cong Diamond.y′ (sym (composeTransformCommutes x₁ x₂ y₁ y₂))!}
+-}
 
 diagonal : ∀ {a b c} {x : Op a b} {y : Op a c} → Diamond x y → SliceObj a
 diagonal {a} {b} {c} {x} {y} d = sliceobj (diag d)
@@ -114,14 +135,17 @@ Transform₀ (sliceobj x , sliceobj y) = diagonal (transform x y)
 Hom : ∀ {o ℓ e} → (C : Category o ℓ e) → Category.Obj C → Category.Obj C → Set ℓ
 Hom = _[_,_]
 
+substCompose : ∀ {a b c₁ c₂} (e : c₁ ≡ c₂) (x : Op a b) (y : Op b c₁)
+             → subst (Op a) e (compose x y) ≡ compose x (subst (Op b) e y)
+substCompose refl x y = refl
+
 Transform₁ : ∀ {a} (x y : Category.Obj (Product (slice a) (slice a)))
            → Hom (Product (slice a) (slice a)) x y
            → Hom (slice a) (Transform₀ x) (Transform₀ y)
 Transform₁ {a} (sliceobj {b₂} x₁x₂ , sliceobj {c₂} y₁y₂)
                (sliceobj {b₁} x₁ , sliceobj {c₁} y₁)
-               (slicearr {x₂} e₁ , slicearr {y₂} e₂) = slicearr e₃
-  where open Category.HomReasoning OT
-        dg = transformGrid x₁ x₂ y₁ y₂
+               (slicearr {x₂} e₁ , slicearr {y₂} e₂) = slicearr {h = diag₂′} (HE.≅-to-≡ eq₃)
+  where dg = transformGrid x₁ x₂ y₁ y₂
         d₁ = Diamond.d (DiamondGrid.D-top dg)
         d₂ = Diamond.d (DiamondGrid.D-bottom dg)
         d₂′ = Diamond.d (transform x₁x₂ y₁y₂)
@@ -131,37 +155,29 @@ Transform₁ {a} (sliceobj {b₂} x₁x₂ , sliceobj {c₂} y₁y₂)
         diag₂ = diag (DiamondGrid.D-bottom dg)
         .eq₁ : d₂ ≡ d₂′
         eq₁ = trans (cong Diamond.d (composeTransformCommutes x₁ x₂ y₁ y₂))
-                   (cong₂ (λ x y → Diamond.d (transform x y)) e₁ e₂)
+                    (cong₂ (λ x y → Diamond.d (transform x y)) e₁ e₂)
         diag₂′ : Op d₁ d₂′
         diag₂′ = subst′ docCtxDecEq (Op d₁) eq₁ diag₂
         .diag₂′′ : Op d₁ d₂′
         diag₂′′ = subst (Op d₁) eq₁ diag₂
-        {-
-        .et : (eqq : d₂ ≡ d₂′) → compose diag₁ (subst′ docCtxDecEq (Op d₁) eqq diag₂) ≡ diag (transform x₁x₂ y₁y₂)
-        et refl =
-        -}
-        .e₃ : compose diag₁ diag₂′ ≡ diag (transform x₁x₂ y₁y₂)
-        --e₃ = et eq
-        e₃ =
+        .eq₃ : compose diag₁ diag₂′ ≅ diag (transform x₁x₂ y₁y₂)
+        eq₃ =
           begin
             compose diag₁ diag₂′
-              ↓⟨ cong (compose diag₁) eq₂ ⟩
+              ≡⟨ cong (compose diag₁) (subst′-eq docCtxDecEq (Op d₁) eq₁ diag₂) ⟩
             compose diag₁ diag₂′′
-            {-
-            subst′ docCtxDecEq (Op a) eq (compose diag₁ diag₂)
-              ↓⟨ {!!} ⟩
-            subst′ docCtxDecEq (Op a) eq (diag (outerDiamond dg))
-            -}
-              ↓⟨ {!!} ⟩
+              ≡⟨ sym (substCompose eq₁ diag₁ diag₂) ⟩
+            subst (Op a) eq₁ (compose diag₁ diag₂)
+              ≅⟨ HE.≡-subst-removable (Op a) eq₁ (compose diag₁ diag₂) ⟩
+            compose diag₁ diag₂
+              ≡⟨ diagCommutes dg ⟩
+            diag (outerDiamond dg)
+              ≅⟨ HE.cong diag (HE.≡-to-≅ (composeTransformCommutes x₁ x₂ y₁ y₂)) ⟩
+            diag (transform (compose x₁ x₂) (compose y₁ y₂))
+              ≅⟨ HE.cong₂ (λ x y → diag (transform x y)) (HE.≡-to-≅ e₁) (HE.≡-to-≅ e₂) ⟩
             diag (transform x₁x₂ y₁y₂)
           ∎
-          where
-            .eq₂ : diag₂′ ≡ diag₂′′
-            eq₂ = subst′-eq docCtxDecEq (Op d₁) eq₁ diag₂
-            --eq₃ : (eqq : d₂ ≡ d₂′) → compose diag₁ (subst (Op d₁) eqq diag₂) ≡ subst (Op a) eqq (compose diag₁ diag₂)
-            --eq₃ eqq with subst (Op d₁) eqq diag₂
-            --eq₃ refl | .diag₂ = ?
-            
+          where open HE.≅-Reasoning
 
 
 {-
