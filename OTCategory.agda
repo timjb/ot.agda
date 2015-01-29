@@ -135,3 +135,29 @@ Apply = record
   ; homomorphism = λ {a} {b} {c} {x} {y} {v} → applyHomomorphism x y v
   ; F-resp-≡ = λ eq {v} → cong (λ y → apply y v) eq
   }
+
+{-
+Cancellation rules:
+
+Neither
+
+cancelRight : ∀ {a b c} (x₁ x₂ : Op a b) (y : Op b c)
+            → compose x₁ y ≡ compose x₂ y → x₁ ≡ x₂
+
+nor
+
+cancelLeft : ∀ {a b c} (x : Op a b) (y₁ y₂ : Op b c)
+           → compose xy₁ ≡ compose x y₂ → y₁ ≡ y₂
+
+hold.
+
+Counterexamples:
+
+* x₁ = InsertChar c Noop
+  x₂ = InsertChar d Noop
+  y  = DeleteChar Noop
+  where c != d
+* x = InsertChar c Noop
+  y₁ = RetainChar (InsertChar c Noop)
+  y₂ = InsertChar c (RetainChar Noop)
+-}
