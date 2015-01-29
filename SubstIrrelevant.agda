@@ -3,6 +3,8 @@ module SubstIrrelevant where
 open import Data.Empty
 open import Relation.Binary.PropositionalEquality
 open import Relation.Binary
+open import Relation.Binary.HeterogeneousEquality using (_≅_)
+import Relation.Binary.HeterogeneousEquality as HE
 open import Relation.Nullary
 
 -- Irrelevant in ⊥
@@ -29,3 +31,9 @@ subst′-eq {A} {a} {b} de P eq v with de a b
 subst₂′ : {A B : Set} {a₁ a₂ : A} {b₁ b₂ : B} (deA : Decidable {A = A} _≡_) (deB : Decidable {A = B} _≡_) (P : A → B → Set)
         → .(a₁ ≡ a₂) → .(b₁ ≡ b₂) → P a₁ b₁ → P a₂ b₂
 subst₂′ {A} {B} {a₁} {a₂} {b₁} {b₂} decA decB P eqa eqb v = subst′ decA (λ a → P a b₂) eqa (subst′ decB (P a₁) eqb v)
+
+≡-subst′-removable : ∀ {A : Set} (de : Decidable {A = A} _≡_)
+                    (P : A → Set) {x y} (eq : x ≡ y) z →
+                    subst′ de P eq z ≅ z
+≡-subst′-removable de P eq v = HE.trans (HE.≡-to-≅ (subst′-eq de P eq v))
+                                        (HE.≡-subst-removable P eq v)
