@@ -92,6 +92,8 @@ diagBottom : ∀ {a b₁ b₂ c₁ c₂} {x₁ : Op a b₁} {x₂ : Op b₁ b₂
            → (dg : DiamondGrid x₁ x₂ y₁ y₂) → Op (Diamond.d (DiamondGrid.D-top dg)) (Diamond.d (DiamondGrid.D-bottom dg))
 diagBottom dg = diag (DiamondGrid.D-bottom dg)
 
+
+
 .diagCommutes : ∀ {a b₁ b₂ c₁ c₂} {x₁ : Op a b₁} {x₂ : Op b₁ b₂} {y₁ : Op a c₁} {y₂ : Op c₁ c₂}
               → (dg : DiamondGrid x₁ x₂ y₁ y₂)
               → compose (diagTop dg) (diagBottom dg) ≡ diag (outerDiamond dg)
@@ -154,7 +156,13 @@ record TransformData {a b₁ b₂ c₁ c₂} (x₁ : Op a b₁) (x₂ : Op b₁ 
     dg : DiamondGrid x₁ x₂ y₁ y₂
     .d-eq : Diamond.d (DiamondGrid.D-bottom dg) ≡ Diamond.d (transform x₁x₂ y₁y₂)
     .diag-eq : compose (diagTop dg) (subst′ docCtxDecEq (Op _) d-eq (diagBottom dg)) ≡ diag (transform x₁x₂ y₁y₂)
-    
+
+transformDataDiag : ∀ {a b₁ b₂ c₁ c₂} {x₁ : Op a b₁} {x₂ : Op b₁ b₂} {x₁x₂ : Op a b₂}
+                                      {y₁ : Op a c₁} {y₂ : Op c₁ c₂} {y₁y₂ : Op a c₂}
+                  → (td : TransformData x₁ x₂ x₁x₂ y₁ y₂ y₁y₂)
+                  → Op (Diamond.d (DiamondGrid.D-top (TransformData.dg td))) (Diamond.d (transform x₁x₂ y₁y₂))
+transformDataDiag (TD dg d-eq diag-eq) = subst′ docCtxDecEq (Op _) d-eq (diagBottom dg)
+
 Transform₁-Worker : ∀ {a b₁ b₂ c₁ c₂} (x₁ : Op a b₁) (x₂ : Op b₁ b₂) (x₁x₂ : Op a b₂) .(eq₁ : compose x₁ x₂ ≡ x₁x₂)
                                       (y₁ : Op a c₁) (y₂ : Op c₁ c₂) (y₁y₂ : Op a c₂) .(eq₂ : compose y₁ y₂ ≡ y₁y₂)
                   → TransformData x₁ x₂ x₁x₂ y₁ y₂ y₁y₂
@@ -201,9 +209,8 @@ Transform₁ : ∀ {a} {x y : Category.Obj (Product (slice a) (slice a))}
 Transform₁ {a} {sliceobj {b₂} x₁x₂ , sliceobj {c₂} y₁y₂}
                {sliceobj {b₁} x₁ , sliceobj {c₁} y₁}
                (slicearr {x₂} eq₁ , slicearr {y₂} eq₂) =
-  let TD dg d-eq diag-eq = Transform₁-Worker x₁ x₂ x₁x₂ eq₁ y₁ y₂ y₁y₂ eq₂
-      diag₂′ = subst′ docCtxDecEq (Op _) d-eq (diag (DiamondGrid.D-bottom dg))
-  in slicearr {h = diag₂′} diag-eq
+  let td = Transform₁-Worker x₁ x₂ x₁x₂ eq₁ y₁ y₂ y₁y₂ eq₂
+  in slicearr {h = transformDataDiag td} (TransformData.diag-eq td)
 
 identityDiamondLeft : ∀ {a c} (y : Op a c) → Diamond identity y
 identityDiamondLeft {a} {c} y = ⋄ c identity y (trans (identityLeft y) (sym (identityRight y)))
@@ -303,6 +310,131 @@ TransformIdentity {a} {sliceobj {b} x , sliceobj {c} y} = getPrf (HE.≅-to-≡ 
            identity
          ∎
 
+{-
+doubleDiagonal₁ : ∀ {a b₁ b₂ b₃ c₁ c₂ c₃} (x₁ : Op a b₁) (x₂ : Op b₁ b₂) (x₃ : Op b₂ b₃)
+                                          (y₁ : Op a c₁) (y₂ : Op c₁ c₂) (y₃ : Op c₂ c₃)
+                → Op (Diamond.d (transform x₁ y₁)) (Diamond.d (transform (compose x₁ (compose x₂ x₃)) (compose y₁ (compose y₂ y₃))))
+doubleDiagonal₁ x₁ x₂ x₃ y₁ y₂ y₃ =
+  let dg = transformGrid x₁ (compose x₂ x₃) y₁ (compose y₂ y₃)
+      d = Diamond.d (DiamondGrid.D-top dg)
+      f = diagBottom dg
+  in subst (Op d) (cong Diamond.d (composeTransformCommutes x₁ (compose x₂ x₃) y₁ (compose y₂ y₃))) f
+
+doubleDiagonal₂ : ∀ {a b₁ b₂ b₃ c₁ c₂ c₃} (x₁ : Op a b₁) (x₂ : Op b₁ b₂) (x₃ : Op b₂ b₃)
+                                          (y₁ : Op a c₁) (y₂ : Op c₁ c₂) (y₃ : Op c₂ c₃)
+                → Op (Diamond.d (transform x₁ y₁)) (Diamond.d (transform (compose x₁ (compose x₂ x₃)) (compose y₁ (compose y₂ y₃))))
+doubleDiagonal₂ x₁ x₂ x₃ y₁ y₂ y₃ = compose (diagBottom dg) (subst₂ Op (sym d₂-eq) (sym d₃-eq) (diagBottom dg′))
+  where
+    dg = transformGrid x₁ x₂ y₁ y₂
+    d = Diamond.d (DiamondGrid.D-top dg)
+    d₂ = Diamond.d (DiamondGrid.D-bottom dg)
+    dg′ = transformGrid (compose x₁ x₂) x₃ (compose y₁ y₂) y₃
+    d₂′ = Diamond.d (DiamondGrid.D-top dg′)
+    d₂-eq : d₂ ≡ d₂′
+    d₂-eq = cong Diamond.d (composeTransformCommutes x₁ x₂ y₁ y₂)
+    d₃ = Diamond.d (transform (compose x₁ (compose x₂ x₃)) (compose y₁ (compose y₂ y₃)))
+    d₃′ = Diamond.d (DiamondGrid.D-bottom dg′)
+    d₃-eq : d₃ ≡ d₃′
+    open HE.≅-Reasoning
+    d₃-eq = HE.≅-to-≡
+      (begin
+        d₃
+          ≡⟨ cong₂ (λ x y → Diamond.d (transform x y)) (assoc x₁ x₂ x₃) (assoc y₁ y₂ y₃) ⟩
+        Diamond.d (transform (compose (compose x₁ x₂) x₃) (compose (compose y₁ y₂) y₃))
+          ≅⟨ HE.cong Diamond.d (HE.≡-to-≅ (sym (composeTransformCommutes (compose x₁ x₂) x₃ (compose y₁ y₂) y₃))) ⟩
+        d₃′
+       ∎)
+
+doubleDiagonal-eq : ∀ {a b₁ b₂ b₃ c₁ c₂ c₃} (x₁ : Op a b₁) (x₂ : Op b₁ b₂) (x₃ : Op b₂ b₃)
+                                            (y₁ : Op a c₁) (y₂ : Op c₁ c₂) (y₃ : Op c₂ c₃)
+                  → doubleDiagonal₁ x₁ x₂ x₃ y₁ y₂ y₃ ≡ doubleDiagonal₂ x₁ x₂ x₃ y₁ y₂ y₃
+doubleDiagonal-eq x₁ x₂ x₃ y₁ y₂ y₃ = HE.≅-to-≡
+  (begin
+     doubleDiagonal₁ x₁ x₂ x₃ y₁ y₂ y₃
+       ≅⟨ {!!} ⟩
+     doubleDiagonal₂ x₁ x₂ x₃ y₁ y₂ y₃
+   ∎)
+  where open HE.≅-Reasoning
+-}
+
+{-
+Transform₁ : ∀ {a} {x y : Category.Obj (Product (slice a) (slice a))}
+           → Hom (Product (slice a) (slice a)) x y
+           → Hom (slice a) (Transform₀ x) (Transform₀ y)
+Transform₁ {a} {sliceobj {b₂} x₁x₂ , sliceobj {c₂} y₁y₂}
+               {sliceobj {b₁} x₁ , sliceobj {c₁} y₁}
+               (slicearr {x₂} eq₁ , slicearr {y₂} eq₂) =
+  let TD dg d-eq diag-eq = Transform₁-Worker x₁ x₂ x₁x₂ eq₁ y₁ y₂ y₁y₂ eq₂
+      diag₂′ = subst′ docCtxDecEq (Op _) d-eq (diag (DiamondGrid.D-bottom dg))
+  in slicearr {h = diag₂′} diag-eq
+-}
+
+
+TransformHomomorphism : ∀ {a} {A B C : Category.Obj (Product (slice a) (slice a))}
+                      → {f : Hom (Product (slice a) (slice a)) A B}
+                      → {g : Hom (Product (slice a) (slice a)) B C}
+                      → _[_≡_] (slice a) (Transform₁ (_[_∘_] (Product (slice a) (slice a)) g f))
+                                         (_[_∘_] (slice a) (Transform₁ g) (Transform₁ f))
+TransformHomomorphism {a} {sliceobj {b₃} x₁x₂x₃ , sliceobj {c₃} y₁y₂y₃}
+                          {sliceobj {b₂} x₁x₂ , sliceobj {c₂} y₁y₂}
+                          {sliceobj {b₁} x₁ , sliceobj {c₁} y₁}
+                          {slicearr {x₃} eqx₂ , slicearr {y₃} eqy₂}
+                          {slicearr {x₂} eqx₁ , slicearr {y₂} eqy₁} = getPrf (HE.≅-to-≡ eq) (opDecEq _ _)
+  where td₁ = Transform₁-Worker x₁ x₂ x₁x₂ eqx₁ y₁ y₂ y₁y₂ eqy₁
+        td₂ = Transform₁-Worker x₁x₂ x₃ x₁x₂x₃ eqx₂ y₁y₂ y₃ y₁y₂y₃ eqy₂
+        eqx₃ : compose x₁ (compose x₂ x₃) ≡ x₁x₂x₃
+        eqx₃ = getPrf (trans (assoc x₁ x₂ x₃) (trans (cong (λ x → compose x x₃) eqx₁) eqx₂)) (opDecEq _ _)
+        eqy₃ : compose y₁ (compose y₂ y₃) ≡ y₁y₂y₃
+        eqy₃ = getPrf (trans (assoc y₁ y₂ y₃) (trans (cong (λ y → compose y y₃) eqy₁) eqy₂)) (opDecEq _ _)
+        td₃ = Transform₁-Worker x₁ (compose x₂ x₃) x₁x₂x₃ eqx₃ y₁ (compose y₂ y₃) y₁y₂y₃ eqy₃
+
+        --⋄ d₁ x₁′ y₁′ e₁ = transform x₁ y₁
+        D₁ = transform x₁ y₁
+        x₁′ = Diamond.x′ D₁
+        y₁′ = Diamond.y′ D₁
+        --⋄ d₂ x₂′ y₁′ e₂ = transform x₂ y₁′
+        D₂ = transform x₂ y₁′
+        x₂′ = Diamond.x′ D₂
+        y₁′′ = Diamond.y′ D₂
+        --⋄ d₃ x₁′′ y₂′ e₃ = transform x₁′ y₂
+        D₃ = transform x₁′ y₂
+        x₁′′ = Diamond.x′ D₃
+        y₂′ = Diamond.y′ D₃
+        D₄ = transform x₃ y₁′′
+        x₃′ = Diamond.x′ D₄
+        y₁′′′ = Diamond.y′ D₄
+        D₅ = transform x₂′ y₂′
+        x₂′′ = Diamond.x′ D₅
+        y₂′′ = Diamond.y′ D₅
+        D₆ = transform x₁′′ y₃
+        x₁′′′ = Diamond.x′ D₆
+        y₃′ = Diamond.y′ D₆
+        D₇ = transform x₃′ y₂′′
+        x₃′′ = Diamond.x′ D₇
+        y₂′′′ = Diamond.y′ D₇
+        D₈ = transform x₂′′ y₃′
+        x₂′′′ = Diamond.x′ D₈
+        y₃′′ = Diamond.y′ D₈
+        D₉ = transform x₃′′ y₃′′
+        x₃′′′ = Diamond.x′ D₉
+        y₃′′′ = Diamond.y′ D₉
+
+        open HE.≅-Reasoning
+        .eq : transformDataDiag td₃ ≅ compose (transformDataDiag td₁) (transformDataDiag td₂)
+        eq =
+          begin
+            subst′ docCtxDecEq (Op _) (TransformData.d-eq td₃) (diagBottom (TransformData.dg td₃))
+              ≅⟨ ≡-subst′-removable docCtxDecEq (Op _) (TransformData.d-eq td₃) _ ⟩
+            diagBottom (TransformData.dg td₃)
+              ≅⟨ {!!} ⟩
+            compose (transformDataDiag td₁) (transformDataDiag td₂)
+          ∎
+        --dg₁ = transformGrid x₁ x₂ y₁ y₂
+        --dg₂ = transformGrid x₁x₂ x₃ y₁y₂ y₃
+        --dg₃ = transformGrid x₁ (compose x₂ x₃) y₁ (compose y₂ y₃)
+        --eq : diagBottom dg₃ ≡ 
+        --eq = ?
+
 Transform-resp-≡ : ∀ {a} {A B : Category.Obj (Product (slice a) (slice a))}
                  → {f g : Hom (Product (slice a) (slice a)) A B}
                  → _[_≡_] (Product (slice a) (slice a)) f g
@@ -316,6 +448,6 @@ Transform {a} = record
   { F₀ = Transform₀ {a = a}
   ; F₁ = Transform₁ {a = a}
   ; identity = λ {A} → TransformIdentity {a} {A} -- no idea why this repetition is necessary
-  ; homomorphism = {!!} -- λ {a} {b} {c} {x} {y} {v} → applyHomomorphism x y v
+  ; homomorphism = λ {A} {B} {C} {f} {g} → TransformHomomorphism {a} {A} {B} {C} {f} {g} -- no idea why this repetition is necessary
   ; F-resp-≡ = λ {A} {B} {F} {G} → Transform-resp-≡ {a} {A} {B} {F} {G} -- no idea why this repetition is necessary
   }

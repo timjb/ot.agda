@@ -93,3 +93,39 @@ record CommOpGrid {a : DocCtx} {n m : ℕ} (xs : OpSeq a n) (ys : OpSeq a m) : S
   field
     og : OpGrid xs ys
     comm : (i : Fin n) (j : Fin m) → compose (getXs og i (inject₁ j)) (getYs og (suc i) j) ≡ compose (getYs og (inject₁ i) j) (getXs og i (suc j))
+
+createOpGrid : ∀ {a n m} (xs : OpSeq a n) (ys : OpSeq a m)
+             → OpGrid xs ys
+createOpGrid {a} {suc n} {suc m} xs ys = OG xs′ ys′
+  where
+    mutual
+      xs′ : (i : Fin (suc n)) (j : Fin (suc m))
+          → Op (coord xs ys (inject₁ i) (suc j))
+               (coord xs ys (suc i) (suc j))
+      xs′ i zero = {!!}
+      xs′ i (suc j) = {!!}
+
+      ys′ : (i : Fin (suc n)) (j : Fin (suc m))
+          → Op (coord xs ys (suc i) (inject₁ j))
+               (coord xs ys (suc i) (suc j))
+      ys′ = {!!}
+createOpGrid {a} {0} {m} xs ys = OG xs′ ys′
+  where
+    xs′ : (i : Fin 0) (j : Fin m)
+        → Op (coord xs ys (inject₁ i) (suc j))
+             (coord xs ys (suc i) (suc j))
+    xs′ ()
+    ys′ : (i : Fin 0) (j : Fin m)
+        → Op (coord xs ys (suc i) (inject₁ j))
+             (coord xs ys (suc i) (suc j))
+    ys′ ()
+createOpGrid {a} {n} {0} xs ys = OG xs′ ys′
+  where
+    xs′ : (i : Fin n) (j : Fin 0)
+        → Op (coord xs ys (inject₁ i) (suc j))
+             (coord xs ys (suc i) (suc j))
+    xs′ _ ()
+    ys′ : (i : Fin n) (j : Fin 0)
+        → Op (coord xs ys (suc i) (inject₁ j))
+             (coord xs ys (suc i) (suc j))
+    ys′ _ ()

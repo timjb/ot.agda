@@ -1,5 +1,3 @@
--- developed for https://gist.github.com/timjb/e3e85f961781b088e88b
-
 module Main where
 
 import Control.Monad (forM_)

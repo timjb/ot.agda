@@ -54,6 +54,9 @@ transform (DeleteChar x) (RetainChar y) = deleteCharDiamond₁ (transform x y)
 transform (DeleteChar x) (DeleteChar y) = deleteCharDiamond₃ (transform x y)
 transform Noop Noop = ⋄ Empty Noop Noop refl
 
+transform-d : ∀ {a b c} → Op a b → Op a c → DocCtx
+transform-d x y = Diamond.d (transform x y)
+
 record DiamondGrid {a b₁ b₂ c₁ c₂} (x₁ : Op a b₁) (x₂ : Op b₁ b₂) (y₁ : Op a c₁) (y₂ : Op c₁ c₂) : Set where
   constructor ◆
   field
